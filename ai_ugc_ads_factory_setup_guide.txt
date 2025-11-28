@@ -1,0 +1,193 @@
+# Setup Guide for "AI UGC Ads Factory" n8n Workflow
+
+This guide provides step-by-step instructions for configuring each node in the provided n8n workflow, which is designed to automate the creation of User-Generated Content (UGC) style video ads.
+
+The workflow uses a combination of AI agents (UGCRobo), OpenAI's multimodal capabilities, and external APIs (`kie.ai`) for image and video generation.
+
+## Prerequisites
+
+Before setting up the workflow, ensure you have the following:
+
+1.  **n8n Instance:** A running instance of n8n (self-hosted or cloud).
+2.  **OpenAI API Key:** For the `Analyze Image` and `GPT` nodes.
+3.  **KIE.AI API Key:** For the `Create Image`, `Get Image`, `Create Video`, and `Get Video` nodes. This key will be used in a Generic HTTP Header Credential.
+4.  **Google Drive Link:** The workflow relies on a Google Drive link to a reference image for the ad brief. This image must be publicly accessible.
+5.  **Box.com Account:** For the `Store Videos` node.
+
+---
+
+## Node-by-Node Setup Instructions
+
+### 1. Execute (ID: `6f4862d6-6667-4fe4-805c-7a0e8892b2dc`)
+*   **Type:** Manual Trigger
+*   **Purpose:** Manually starts the workflow.
+*   **Setup:** No configuration needed. Click "Execute Workflow" to start.
+
+### 2. Brief (ID: `2200787e-382c-423e-8982-145417532328`)
+*   **Type:** Set
+*   **Purpose:** Defines the input variables for the ad creation process, including the ad brief and the reference image link.
+*   **Setup:**
+    *   **Fields:** Ensure the following fields are correctly set for the ad you want to create:
+        *   `gdrive link reference image`: **MUST** be a publicly accessible Google Drive link to the reference image.
+        *   `product name`: The name of the product.
+        *   `product description`: A detailed description of the product.
+        *   `ad goal`: The primary goal of the ad (e.g., "drive traffic to website").
+        *   `target audience`: Description of the target demographic.
+        *   `ad length`: Desired length of the final video ad.
+
+### 3. Analyze Image (ID: `4c669df7-9de8-4eff-9fe5-cc874f18acd2`)
+*   **Type:** OpenAI (Multimodal)
+*   **Operation:** Analyze Image
+*   **Purpose:** Analyzes the reference image to extract design elements (color, font, brand) for consistency in the generated ad.
+*   **Setup:**
+    *   **Credentials:** Set up your **OpenAI API Key** credentials.
+    *   **Model:** `chatgpt-4o-latest` (Ensure your key supports this model).
+    *   **Image URL:** The expression extracts the file ID from the Google Drive link provided in the `Brief` node:
+        ```
+        =https://drive.google.com/uc?export=download&id={{ $('Brief').item.json['gdrive link reference image'].match(/https:\/\/drive\.google\.com\/file\/d\/([A-Za-z0-9_-]+)/)?.[1] }}
+        ```
+    *   **Action:** No action required if the OpenAI credentials are set.
+
+### 4. UGCRobo - Logo Animator AI Agent (ID: `34447fe0-2eff-495c-8144-e75c27fd819e`)
+*   **Type:** Chain (LLM)
+*   **Purpose:** The core AI agent that generates the scene-by-scene prompts for the video and image creation, using the ad brief and image analysis as context.
+*   **Setup:**
+    *   **LLM Model:** Connected to the **GPT** node.
+    *   **Output Parser:** Connected to the **Structured Output** node.
+    *   **Prompt:** The prompt is pre-defined and uses expressions to pull data from the `Brief` and `Analyze Image` nodes.
+    *   **Action:** No action required.
+
+### 5. GPT (ID: `0d46d5ae-f811-4722-8721-ba340c0f69ce`)
+*   **Type:** OpenAI Chat Model
+*   **Purpose:** Provides the language model for the UGCRobo agent.
+*   **Setup:**
+    *   **Credentials:** Use the same **OpenAI API Key** credentials.
+    *   **Model:** `gpt-4.1` (Note: This model name is non-standard and may need to be updated to a valid model like `gpt-4-turbo` or `gpt-4o` if `gpt-4.1` is not supported by your n8n setup).
+    *   **Action:** Verify the model name is correct for your environment.
+
+### 6. Structured Output (ID: `fcde6d94-51d5-4bd1-a416-00be36af2dc4`)
+*   **Type:** Structured Output Parser
+*   **Purpose:** Enforces the output from the UGCRobo agent to be a specific JSON structure containing scene details (`image_prompt`, `video_prompt`, `aspect_ratio`, `model`).
+*   **Setup:**
+    *   **JSON Schema Example:** The schema is pre-defined in the node.
+    *   **Action:** No action required.
+
+### 7. Split Out (ID: `c2773a96-bad6-424f-a8ae-057d7c26e7e8`)
+*   **Type:** Split Out
+*   **Purpose:** Splits the single JSON output (containing all scenes) into multiple items, one for each scene, allowing parallel processing of image and video generation.
+*   **Setup:**
+    *   **Field to Split Out:** `output.scenes`
+    *   **Action:** No action required.
+
+### 8. Create Image (ID: `81e54830-0a36-4bbc-b560-29e89c97086f`)
+*   **Type:** HTTP Request
+*   **Purpose:** Calls the `kie.ai` API to generate a static image for the scene.
+*   **Setup:**
+    *   **Credentials:** Set up a **Generic Credential** for `httpHeaderAuth` to pass your **KIE.AI API Key** (e.g., as an `Authorization: Bearer <API_KEY>` header).
+    *   **Method:** `POST`
+    *   **URL:** `https://api.kie.ai/api/v1/gpt4o-image/generate`
+    *   **Body:** Uses expressions to pull `image_prompt`, `aspect_ratio_image`, and the `gdrive link reference image` from previous nodes.
+    *   **Action:** **Crucially, set up the KIE.AI API Key credential.**
+
+### 9. Wait 1 (ID: `e1974b8f-9fef-42b1-a8fd-40c91040c104`)
+*   **Type:** Wait
+*   **Purpose:** Pauses the workflow for 300 seconds (5 minutes) to allow the image generation to complete.
+*   **Setup:**
+    *   **Amount:** `300` seconds.
+    *   **Action:** No action required.
+
+### 10. Get Image (ID: `7ffebbd9-b7ae-4c9b-b416-ae33435c10f8`)
+*   **Type:** HTTP Request
+*   **Purpose:** Checks the status of the image generation task and retrieves the final image URL from `kie.ai`.
+*   **Setup:**
+    *   **Credentials:** Use the same **KIE.AI API Key** credential.
+    *   **Method:** `GET`
+    *   **URL:** `https://api.kie.ai/api/v1/gpt4o-image/record-info`
+    *   **Query Parameter:** `taskId` with value `={{ $('Create Image').item.json.data.taskId }}`.
+    *   **Action:** No action required.
+
+### 11. If 1 (ID: `b4cd1fea-be43-43c3-83c5-a680a02fa834`)
+*   **Type:** If
+*   **Purpose:** Checks if the image generation was successful (`successFlag` equals 1).
+*   **Setup:**
+    *   **Condition:** `={{ $json.data.successFlag }}` equals `1`.
+    *   **Action:** No action required.
+
+### 12. Create Video (ID: `70194d76-338b-4a93-b684-1840a1a4db7b`)
+*   **Type:** HTTP Request
+*   **Purpose:** Calls the `kie.ai` API to generate the video clip for the scene, using the generated image as a reference.
+*   **Setup:**
+    *   **Credentials:** Use the same **KIE.AI API Key** credential.
+    *   **Method:** `POST`
+    *   **URL:** `https://api.kie.ai/api/v1/veo/generate`
+    *   **Body:** Uses expressions to pull `video_prompt`, `model`, `aspect_ratio_video`, and the generated `imageUrls` from previous nodes.
+    *   **Action:** No action required.
+
+### 13. Wait 2 (ID: `ff5a2b24-9e18-4d8c-9108-6b988d822b22`)
+*   **Type:** Wait
+*   **Purpose:** Pauses the workflow for 600 seconds (10 minutes) to allow the video generation to complete.
+*   **Setup:**
+    *   **Amount:** `600` seconds.
+    *   **Action:** No action required.
+
+### 14. Get Video (ID: `c02fe5bc-5129-40da-9c69-6cf6fcc4d748`)
+*   **Type:** HTTP Request
+*   **Purpose:** Checks the status of the video generation task and retrieves the final video URL from `kie.ai`.
+*   **Setup:**
+    *   **Credentials:** Use the same **KIE.AI API Key** credential.
+    *   **Method:** `GET`
+    *   **URL:** `https://api.kie.ai/api/v1/veo/record-info`
+    *   **Query Parameter:** `taskId` with value `={{ $('Create Video').item.json.data.taskId }}`.
+    *   **Action:** No action required.
+
+### 15. If 2 (ID: `9876c648-742a-4287-8391-dd2b4da668e9`)
+*   **Type:** If
+*   **Purpose:** Checks if the video generation was successful (`successFlag` equals 1).
+*   **Setup:**
+    *   **Condition:** `={{ $json.data.successFlag }}` equals `1`.
+    *   **Action:** No action required.
+
+### 16. Get Video Files (ID: `6accba10-f36a-4895-a900-cdbba002b7cf`)
+*   **Type:** HTTP Request
+*   **Purpose:** Downloads the final video file content using the URL retrieved from the `Get Video` node.
+*   **Setup:**
+    *   **Method:** `GET`
+    *   **URL:** `={{ $json.data.response.resultUrls[0] }}`
+    *   **Action:** No action required.
+
+### 17. Store Videos (ID: `7543b5fb-51fa-439f-9222-49ac55b3e28c`)
+*   **Type:** Box
+*   **Operation:** Upload
+*   **Purpose:** Uploads the final video file to a Box.com folder.
+*   **Setup:**
+    *   **Credentials:** Set up your **Box.com** credentials in n8n.
+    *   **File Name:** `={{ $json.data.response.taskId }}.mp4`
+    *   **Binary Data:** Checked (The input from `Get Video Files` is binary).
+    *   **Action:** **Crucially, set up the Box.com credential.**
+
+### 18. Merge (ID: `dbe2bf01-1911-40fa-9515-6d19dc56c8d7`)
+*   **Type:** Merge
+*   **Operation:** Merge By Index
+*   **Purpose:** Merges the processed scene items back into a single item, which is typically the final step before a final action (though this node is not connected to a final output in the provided JSON).
+*   **Setup:**
+    *   **Mode:** Merge By Index
+    *   **Action:** No action required.
+
+### 19. Sticky Note2 (ID: `79746a91-0622-4401-a25a-6515e42136d9`)
+*   **Type:** Sticky Note
+*   **Purpose:** Documentation/Annotation.
+*   **Setup:** No action required.
+
+### 20. Think (ID: `4639ee15-b886-4ff0-aa00b41c5be3d555`)
+*   **Type:** Think (Langchain Tool)
+*   **Purpose:** A placeholder or utility node for internal AI agent reasoning.
+*   **Setup:** No action required.
+
+## Summary of Required Credentials/Accounts
+
+| Service | Node(s) | Required Credential/Account | Notes |
+| :--- | :--- | :--- | :--- |
+| **OpenAI** | `Analyze Image`, `GPT` | OpenAI API Key | Used for multimodal analysis and prompt generation. |
+| **KIE.AI** | `Create Image`, `Get Image`, `Create Video`, `Get Video` | KIE.AI API Key (Generic HTTP Header) | Used for image and video generation. |
+| **Box.com** | `Store Videos` | Box.com Credentials | Used for storing the final video output. |
+| **Google Drive** | `Brief`, `Analyze Image` | Publicly accessible link | The reference image must be shared publicly. |

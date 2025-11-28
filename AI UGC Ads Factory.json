@@ -1,0 +1,657 @@
+{
+  "name": "AI UGC Ads Factory",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.toolThink",
+      "typeVersion": 1,
+      "position": [
+        192,
+        416
+      ],
+      "id": "4639ee15-b886-4ff0-aa00-b41c5be3d555",
+      "name": "Think"
+    },
+    {
+      "parameters": {
+        "resource": "image",
+        "operation": "analyze",
+        "modelId": {
+          "__rl": true,
+          "value": "chatgpt-4o-latest",
+          "mode": "list",
+          "cachedResultName": "CHATGPT-4O-LATEST"
+        },
+        "text": "Return the analysis in YAML format with the following fields:\n\nbrand_name: (Name of the brand shown in the image, if visible or inferable)\ncolor_scheme:\n  - hex: (Hex code of each prominent color used)\n    name: (Descriptive name of the color)\nfont_style: (Describe the font family or style used: serif/sans-serif, bold/thin, etc.)\nvisual_description: (A full sentence or two summarizing what is seen in the image, ignoring the background)\n\nOnly return the YAML. Do not explain or add any other comments.\n",
+        "imageUrls": "=https://drive.google.com/uc?export=download&id={{ $('Brief').item.json['gdrive link reference image'].match(/https:\\/\\/drive\\.google\\.com\\/file\\/d\\/([A-Za-z0-9_-]+)/)?.[1] }}",
+        "simplify": false,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        -160,
+        912
+      ],
+      "id": "4c669df7-9de8-4eff-9fe5-cc874f18acd2",
+      "name": "Analyze Image"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4.1",
+          "mode": "list",
+          "cachedResultName": "gpt-4.1"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        64,
+        416
+      ],
+      "id": "0d46d5ae-f811-4722-8721-ba340c0f69ce",
+      "name": "GPT"
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"scenes\": [\n    {\n      \"image_prompt\": \"emotion: [string]\\naction: [string]\\ncharacter: [string]\\nsetting: [string]\\ncamera: [string]\\nstyle: [string]\",\n      \"video_prompt\": \"dialogue: [string]\\nemotion: [string]\\nvoice_type: [string]\\naction: [string]\\ncharacter: [string]\\nsetting: [string]\\ncamera: [string]\",\n      \"aspect_ratio_video\": \"[9:16 or 16:9]\",\n      \"aspect_ratio_image\": \"[3:2 or 2:3]\",\n      \"model\": \"[veo3 or veo3_fast]\"\n    }\n  ]\n}\n"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        320,
+        416
+      ],
+      "id": "fcde6d94-51d5-4bd1-a416-00be36af2dc4",
+      "name": "Structured Output"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "output.scenes",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        320,
+        272
+      ],
+      "id": "c2773a96-bad6-424f-a8ae-057d7c26e7e8",
+      "name": "Split Out"
+    },
+    {
+      "parameters": {
+        "content": "## INPUT: Any Product",
+        "height": 112,
+        "width": 448,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -496,
+        848
+      ],
+      "id": "79746a91-0622-4401-a25a-6515e42136d9",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.data.response.resultUrls[0] }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        528,
+        912
+      ],
+      "id": "6accba10-f36a-4895-a900-cdbba002b7cf",
+      "name": "Get Video Files"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -464,
+        912
+      ],
+      "id": "6f4862d6-6667-4fe4-805c-7a0e8892b2dc",
+      "name": "Execute"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.kie.ai/api/v1/gpt4o-image/generate",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"filesUrl\": [\n    \"https://drive.google.com/uc?export=download&id={{ $('Brief').item.json['gdrive link reference image'].match(/https:\\/\\/drive\\.google\\.com\\/file\\/d\\/([A-Za-z0-9_-]+)/)?.[1] }}\"\n  ],\n  \"prompt\": \"{{ $json.image_prompt.replace(/\\\"/g, '\\\\\\\\\\\"').replace(/\\n/g, '\\\\\\\\n') }}\",\n  \"size\": \"{{ $json.aspect_ratio_image }}\",\n  \"nVariants\": 1\n}",
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 1,
+              "batchInterval": 3000
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        48,
+        544
+      ],
+      "id": "81e54830-0a36-4bbc-b560-29e89c97086f",
+      "name": "Create Image"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.kie.ai/api/v1/gpt4o-image/record-info",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "taskId",
+              "value": "={{ $('Create Image').item.json.data.taskId }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        48,
+        800
+      ],
+      "id": "7ffebbd9-b7ae-4c9b-b416-ae33435c10f8",
+      "name": "Get Image"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.kie.ai/api/v1/veo/generate",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={\n  \"prompt\":\"{{ $('Split Out').item.json.video_prompt\n    .replace(/\\n/g, '\\\\n')\n    .replace(/\"/g, '\\\\\"') }}\",\n  \"model\": \"{{ $('Split Out').item.json.model }}\",\n  \"aspectRatio\": \"{{ $('Split Out').item.json.aspect_ratio_video }}\",\n  \"imageUrls\": \"{{ $('Get Image').item.json.data.response.resultUrls[0] }}\"\n}\n",
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 1,
+              "batchInterval": 3000
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        304,
+        544
+      ],
+      "id": "70194d76-338b-4a93-b684-1840a1a4db7b",
+      "name": "Create Video"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.kie.ai/api/v1/veo/record-info",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "taskId",
+              "value": "={{ $('Create Video').item.json.data.taskId }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        304,
+        800
+      ],
+      "id": "c02fe5bc-5129-40da-9c69-6cf6fcc4d748",
+      "name": "Get Video"
+    },
+    {
+      "parameters": {
+        "amount": 600
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        304,
+        672
+      ],
+      "id": "ff5a2b24-9e18-4d8c-9108-6b988d822b22",
+      "name": "Wait 2",
+      "webhookId": "cf23022b-1ab8-42a0-aa2e-e1ad33b4aeb6"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "4c895d90-e8bd-42cf-ab58-511c85e8c782",
+              "leftValue": "={{ $json.data.successFlag }}",
+              "rightValue": 1,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        304,
+        928
+      ],
+      "id": "9876c648-742a-4287-8391-dd2b4da668e9",
+      "name": "If 2"
+    },
+    {
+      "parameters": {
+        "amount": 300
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        48,
+        672
+      ],
+      "id": "e1974b8f-9fef-42b1-a8fd-40c91040c104",
+      "name": "Wait 1",
+      "webhookId": "6f45a3ee-b783-4f2d-abc3-1bb3d091bf2e"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "4c895d90-e8bd-42cf-ab58-511c85e8c782",
+              "leftValue": "={{ $json.data.successFlag }}",
+              "rightValue": 1,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        48,
+        928
+      ],
+      "id": "b4cd1fea-be43-43c3-83c5-a680a02fa834",
+      "name": "If 1"
+    },
+    {
+      "parameters": {
+        "fileName": "={{ $json.data.response.taskId }}.mp4",
+        "binaryData": true
+      },
+      "type": "n8n-nodes-base.box",
+      "typeVersion": 1,
+      "position": [
+        736,
+        912
+      ],
+      "id": "3b6b591f-641c-4092-a950-618e4c2dde73",
+      "name": "Store Videos"
+    },
+    {
+      "parameters": {
+        "content": "## OUTPUT: UGC Video",
+        "height": 112,
+        "width": 448,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        496,
+        848
+      ],
+      "id": "8c763ce9-265b-40fa-9785-adbcc57ab5a4",
+      "name": "Sticky Note5"
+    },
+    {
+      "parameters": {
+        "content": "# AI UGC Ads Factory \n",
+        "height": 144,
+        "width": 480,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -32,
+        176
+      ],
+      "id": "131e2e67-e3ca-4dcd-836c-d719f6f2ae2e",
+      "name": "Sticky Note6"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Your task: Create image and video prompts as guided by your system guidelines.\n\nMake sure that the reference image is depicted as ACCURATELY as possible in the resulting images, especially all text.\n\n***\n\nCount of videos to create: {{ $('Brief').item.json['how many videos'] }} \n\n***\nDescription of the reference image:\n {{ $json.choices[0].message.content }}\n\n***\nThe user's preferred aspect ratio:{{ $('Brief').item.json.aspect_ratio }}\n\nThe user's preferred model: {{ $('Brief').item.json.model }}\n\nThe user's preferred dialogue script:\n{{ $('Brief').item.json.dialogue }}\n\nOther special requests from the user:\n{{ $('Brief').item.json['any special requests'] }}\n\n***\nUse the Think tool to double check your output\n",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "=system_prompt: |\n  ## SYSTEM PROMPT: UGC-Style Veo3/Veo3_fast Prompt Generator\n\n  You are a UGC (User-Generated Content) AI agent.  \n  Your task: Take the reference image or the product in the reference image and place it into realistic, casual scenes as if captured by everyday content creators or influencers.  \n\n  All outputs must feel **natural, candid, and unpolished** — avoiding professional or overly staged looks. This means:\n\n    - Everyday realism with authentic, relatable settings\n    - Amateur-quality iPhone photo/video style\n    - Slightly imperfect framing and lighting\n    - Candid poses and genuine expressions\n    - Visible imperfections (blemishes, messy hair, uneven skin)\n    - Real-world environments left as-is (clutter, busy backgrounds)\n\n\nWe need these videos to look natural and real. So in the prompts, have the Camera parameter always use keywords like these: unremarkable amateur iPhone photos, reddit image, snacpchat video, Casual iPhone selfie, slightly uneven framing, Authentic share, slightly blurry, Amateur quality phone photo\n\nIf the dialogue is not provided by the user or you are explicitly asked to create it, generate a casual, conversational line under 200 characters, as if a person were speaking naturally to a friend while talking about the product. Avoid overly formal or sales-like language. The tone should feel authentic, spontaneous, and relatable, matching the UGC style. For example:\nSo TikTok made me buy this... and it turns out it's the best tasting fruit beer in Sydney? And they donate their profits to charity! And you know what it's honestly really good!\n\nFor the dialogue, use ... to indicate pauses, and avoid special characters like em dashes or hyphens\n\nIMPORTANT: Do NOT use double quotes in the image and video prompts\n\n\n\n  A – Ask:\n    Generate  image and video generation instructions for AI image and video generation models based on the user’s request, ensuring exact YAML format for both image and video prompts. Infer aspect ratios from vertical/horizontal context; default to vertical if unspecified.\n\n    **Scene count rule:** Read the user's requested number of video  (an explicit integer) and output **exactly that many** scenes. If the user does not specify a number, default to **1 scene**. Never output more or fewer scenes than requested.\n\n\n\n  G – Guidance:\n    - Always follow UGC-style casual realism principles listed above.\n    - Ensure diversity in gender, ethnicity, and hair color when applicable. Default to actors in 21 to 38 years old unless specified otherwise.\n    - Use provided scene list when available.\n    - Avoid double quotes in the image and video prompts\n\n\n  E – Examples:\n    good_examples:\n      - |\n        {\n          \"scenes\": [\n            {\n              \"image_prompt\": \"action: Character is sitting in the driver's seat, smiling openly while looking at the camera\\ncharacter: Mid-20s blonde female with long straight hair, wearing a plain light-colored t-shirt, natural facial features with minimal makeup\\nsetting: Inside a parked car during daytime, sunlight streaming in from the side window, visible back seats and partial view of the road outside\\ncamera: Casual iPhone selfie, slightly uneven framing, natural lighting with mild overexposure on one side of the face from direct sunlight\\nstyle: Very casual and candid, unposed, authentic expression with friendly and cheerful emotion\",\n              \"video_prompt\": \"dialogue: \\\"So TikTok made me buy this... and it turns out it's the best tasting fruit beer in Sydney? And they donate their profits to charity! And you know what, it's honestly really good!\\\"\\naction: Character sits in the driver's seat of a parked car, holding the beer can close to the camera while speaking the dialogue with a casual, friendly tone\\ncamera: Amateur-quality iPhone video, natural daylight coming through the side window, steady framing from a handheld position\\nemotion: Very happy and energetic, genuine enthusiasm and friendliness while talking about the beer\",\n              \"aspect_ratio_video\": \"9:16\",\n              \"aspect_ratio_image\": \"2:3\",\n              \"model\": \"veo3\"\n            }\n          ]\n        }\n\n  N – Notation:\n    - Final output is a `\"scenes\"` array at the root level.\n    - The array must contain **exactly `scene_count`** objects, where `scene_count` is the user-specified number (or 1 if unspecified).\n    - Each scene contains:\n      - `image_prompt` → stringified YAML with: emotion, action, character, setting, camera, style\n      - `video_prompt` → stringified YAML with: dialogue, emotion, voice_type, action, character, setting, camera\n      - `aspect_ratio_video` → \"9:16\" or \"16:9\" (default vertical → 9:16)\n      - `aspect_ratio_image` → \"3:2\" or \"2:3\" (default vertical → 2:3)\n      - `model` → \"veo3\" or \"veo3_fast\"\n\n  T – Tools:\n    - Think Tool: Double-check output for completeness, diversity, adherence to style, and that the number of scenes exactly matches the requested count.\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2,
+      "position": [
+        0,
+        272
+      ],
+      "id": "b3b491dd-39dd-4def-973a-03fb692d5ea1",
+      "name": "UGCRobo - Logo Animator AI Agent"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e1b058b6-a4e7-4508-9df0-78140dbfcb4b",
+              "name": "gdrive link reference image",
+              "value": "https://drive.google.com/file/d/1g1rSWs6OgNASMeV8Ejx9fzCVHhnVEOCN/view?usp=sharing",
+              "type": "string"
+            },
+            {
+              "id": "334cd55d-056c-4a40-a1cb-bb43a951d314",
+              "name": "how many videos",
+              "value": "3",
+              "type": "string"
+            },
+            {
+              "id": "305ae681-d185-4e31-8b6a-0cac38627547",
+              "name": "dialogue",
+              "value": "So TikTok made me buy this... and it turns out it's the best tasting fruit beer in Sydney? And they donate their profits to charity! And you know what it's honestly really good!",
+              "type": "string"
+            },
+            {
+              "id": "a76db358-7fcb-4cb2-a652-e67aa314c7d8",
+              "name": "model",
+              "value": "veo3_fast",
+              "type": "string"
+            },
+            {
+              "id": "ec87685c-1ffb-4d82-8536-3259d2ea6aee",
+              "name": "aspect_ratio",
+              "value": "vertical",
+              "type": "string"
+            },
+            {
+              "id": "e46f416f-7609-455f-8795-72f52ba1e563",
+              "name": "any special requests",
+              "value": "=For this run - I want normal & casual looking people.\n\nI want the actors in the video to be 21 to 29 years old.\n\nHave diversity in the actors' gender, \n\n***\nAlso I want diversity in the scenes from below:\n\nPodcast – Modern podcast studio with microphone, monitors, acoustic panels, small plant, warm lighting.\n\nCar – Parked car during daytime with sunlight streaming through the side window, visible back seats and partial road outside.\n\nEveryday mirror selfie – Small bathroom with slightly dirty mirror, water spots, cluttered counter, harsh overhead lighting.\n\nWalking – Busy city street with natural daylight, pedestrians, and urban background.\n\nWearing shades – Urban street in high midday sun with strong shadows, storefronts, and passing traffic.\n\nBeach – Sandy shoreline with ocean waves in background, bright outdoor light.\n\nStreet interview – Outdoor urban setting with pedestrians and buildings blurred in background.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -304,
+        912
+      ],
+      "id": "21568bfb-e4a4-4ef8-9901-4c0ea8cd9012",
+      "name": "Brief"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Think": {
+      "ai_tool": [
+        [
+          {
+            "node": "UGCRobo - Logo Animator AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze Image": {
+      "main": [
+        [
+          {
+            "node": "UGCRobo - Logo Animator AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GPT": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "UGCRobo - Logo Animator AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "UGCRobo - Logo Animator AI Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "Create Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Video Files": {
+      "main": [
+        [
+          {
+            "node": "Store Videos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute": {
+      "main": [
+        [
+          {
+            "node": "Brief",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Image": {
+      "main": [
+        [
+          {
+            "node": "Wait 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Image": {
+      "main": [
+        [
+          {
+            "node": "If 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Video": {
+      "main": [
+        [
+          {
+            "node": "Wait 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Video": {
+      "main": [
+        [
+          {
+            "node": "If 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 2": {
+      "main": [
+        [
+          {
+            "node": "Get Video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If 2": {
+      "main": [
+        [
+          {
+            "node": "Get Video Files",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 1": {
+      "main": [
+        [
+          {
+            "node": "Get Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If 1": {
+      "main": [
+        [
+          {
+            "node": "Create Video",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "UGCRobo - Logo Animator AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Brief": {
+      "main": [
+        [
+          {
+            "node": "Analyze Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "113054e7-d85b-4afd-8422-175f76ce8bc4",
+  "meta": {
+    "instanceId": "71e75f31cbbda4f9ff87fc200db6b7402f0dd9be492bb830897dfc4eba7e3fa0"
+  },
+  "id": "bM8jwqJLXiEXyHJF",
+  "tags": []
+}
