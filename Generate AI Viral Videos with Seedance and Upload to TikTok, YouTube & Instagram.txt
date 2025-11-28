@@ -1,0 +1,38 @@
+Who is this for?
+This template is ideal for creators, content marketers, social media managers, and AI enthusiasts who want to automate the production of short-form, visually captivating videos for platforms like TikTok, YouTube Shorts, and Instagram Reels — all without manual editing or publishing.
+
+What problem is this workflow solving?
+Creating engaging videos requires:
+
+Generating creative ideas
+Writing detailed scene prompts
+Producing realistic video clips and sound effects
+Editing and stitching the final video
+Publishing across multiple platforms
+This workflow automates the entire process, saving hours of manual work and ensuring consistent, AI-driven content output ready for social distribution.
+
+What this workflow does
+This end-to-end AI video automation workflow:
+
+Generates a creative idea using OpenAI and LangChain
+Creates detailed video prompts with Seedance AI
+Generates video clips via Wavespeed AI
+Generates sound effects with Fal AI
+Stitches the final video using Fal AI’s ffmpeg API
+Logs metadata and video links to Google Sheets
+Uploads the video to Blotato
+Auto-publishes to TikTok, YouTube, Instagram, and other platforms
+Setup
+Add your OpenAI API key in the LLM nodes
+Set up Seedance and Wavespeed AI credentials for video prompt and clip generation
+Add your Fal AI API key for sound and stitching steps
+Connect your Google Sheets account for tracking ideas and outputs
+Set your Blotato API key and fill in the platform account IDs in the Assign Social Media IDs node
+Adjust the Schedule Trigger to control when the automation runs
+How to customize this workflow to your needs
+Change the AI prompts to target your niche (e.g., ASMR, product videos, humor)
+Add a Telegram or Slack step for video preview before publishing
+Tweak scene structure or video duration to match your style
+Disable platforms you don’t want by turning off specific HTTP Request nodes
+Edit the sound generation prompts for different moods or effects
+📄 Documentation: Notion Guide

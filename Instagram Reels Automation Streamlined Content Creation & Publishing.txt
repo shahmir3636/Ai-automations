@@ -1,0 +1,25 @@
+This workflow automates the process of creating and posting Instagram Reels using a combination of Google Drive, AI, Airtable, and the Facebook Graph API. It offers two distinct paths for content creation:
+
+Scheduled Random Video Selection & Posting
+Randomly Selects from Source Folder: This part of the workflow is triggered based on a schedule. It pulls a random video file from a designated "Random video mover" folder within Google Drive.
+Moves Video to Processing Folder: The selected video is then moved to a dedicated processing folder.
+Manual Upload Trigger & Posting
+File Upload Detection: This part of the workflow watches a specific Google Drive folder ("n8n reels automation on instagram"). When a new video file is uploaded, it triggers the workflow.
+Core Functionality (Applied to Both Paths):
+Downloads Video: Downloads the video file from Google Drive.
+AI-Powered Caption Generation: Leverages an AI model (Google Gemini) to generate an engaging Instagram caption based on the video's file name. The prompt is designed to create concise, attention-grabbing captions with relevant hashtags and a call-to-action.
+Airtable Integration: Stores the generated caption and video details (name, URL) in an Airtable base for tracking and organization.
+Instagram Reels Posting: Uses the Facebook Graph API to create a media container with the video and generated caption. It then waits for a specified duration before publishing the Reel to Instagram.
+Cleanup: Deletes the downloaded video file from your n8n server after successful posting.
+Benefits:
+Saves Time: Automates the repetitive tasks of caption writing and scheduling posts.
+Enhances Engagement: Uses AI to create compelling captions.
+Organized Content: Keeps track of your Reels and captions in Airtable.
+Flexible Trigger Options: Supports both scheduled and manual uploads.
+How to Use:
+Set up Google Drive: Create two folders: one for storing videos intended for random selection ("Random video mover") and one for manual uploads ("n8n reels automation on instagram").
+Configure Airtable: Create an Airtable base with a table containing columns for the video's name, caption, and URL.
+Connect Credentials: Add your Google Drive, Facebook Graph API, Google Gemini API, and Airtable credentials to the appropriate nodes.
+Customize Prompts: Adjust the AI prompt in the "AI Agent" node to better suit your brand voice and target audience.
+Adjust Timings: Modify the "Wait" node durations to control the delay between video processing, caption generation, and publishing.
+Enable Workflow: Activate the workflow to start automating your Instagram Reels creation!
